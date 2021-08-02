@@ -20,6 +20,7 @@ public class StudentFormController {
     private Connection connection;
 
     private PreparedStatement pstmInsertStudent;
+    private PreparedStatement pstmQueryID;
 
     public void initialize(){
         tblStudents.getColumns().get(0).setCellValueFactory(new PropertyValueFactory<>("id"));
@@ -52,8 +53,9 @@ public class StudentFormController {
 
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/dep7", "root", "mysql");
+            connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/sms_lite", "root", "root");
             pstmInsertStudent = connection.prepareStatement("INSERT INTO student VALUES (?,?)");
+            pstmQueryID = connection.prepareStatement("SELECT id FROM student WHERE id=?");
         } catch (SQLException | ClassNotFoundException ex) {
             new Alert(Alert.AlertType.ERROR, "Failed to connect to the database server.").showAndWait();
             ex.printStackTrace();
@@ -77,7 +79,7 @@ public class StudentFormController {
             while (rst.next()) {
                 String id = rst.getString("id");
                 String name = rst.getString("name");
-                tblStudents.getItems().add(new StudentTM(id, name, new Button()));
+                tblStudents.getItems().add(new StudentTM(id, name, new Button("Delete")));
             }
 
         } catch (SQLException ex) {
@@ -94,5 +96,52 @@ public class StudentFormController {
     }
 
     public void btnSave_OnAction(ActionEvent actionEvent) {
+        String id = txtId.getText();
+        String name = txtName.getText();
+
+        if (btnSave.getText().equals("Save")) {
+
+            try {
+                pstmQueryID.setString(1, id);;
+
+
+                if (pstmQueryID.executeQuery().next()) {
+                    new Alert(Alert.AlertType.ERROR, "Student ID already exists").show();
+                    txtId.requestFocus();
+                    return;
+                }
+
+
+                pstmInsertStudent.setString(1, id);
+                pstmInsertStudent.setString(2, name);
+                int affectedRows = pstmInsertStudent.executeUpdate();
+
+                if (affectedRows == 1) {
+                    tblStudents.getItems().add(new StudentTM(id, name, new Button("Delete")));
+                    clearFields();
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "Failed to save the student, retry").show();
+                }
+
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+//                String errMsg = "Failed to save the customer";
+//                switch (ex.getErrorCode()){
+//                    case 1062:
+//                        errMsg = "Duplicate record, please check the customer ID and NIC";
+//                }
+                new Alert(Alert.AlertType.ERROR, "Failed to save the student, retry").show();
+            }
+        } else {
+
+
+        }
+
+    }
+
+    private void clearFields(){
+        txtId.setText("");
+        txtName.setText("");
+        txtPhoneNumber.setText("");
     }
 }
